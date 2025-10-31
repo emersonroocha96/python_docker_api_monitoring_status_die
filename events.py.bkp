@@ -1,0 +1,32 @@
+import docker
+import datetime
+import requests
+
+
+# Recomendo usar docker.from_env() para que a biblioteca
+# encontre automaticamente o socket do Docker (mais confiável)
+# client = docker.DockerClient(base_url='tcp://127.0.0.1:2375')
+
+client = docker.from_env()
+
+webhook_url = "https://discord.com/api/webhooks/1433598870704881725/Kx-3QZM9LF2umXYm4rnt8ZTcDtAyD764LeFZ2IRsfNO57mNcDknHJ8DTAkwHbLJddEj7"
+
+print("Monitorando eventos 'DIE' do docker...")
+
+for event in client.events(decode=True, filters={"event": "die"}):
+    try:
+        container_id = event["id"]
+        container_name = event["Actor"]["Attributes"]["name"]
+        epoch_time = event["time"]
+        date_time = datetime.datetime.fromtimestamp(epoch_time).strftime('%Y-%M-%D %H:%M:%S')
+
+        payload = {"content": "🚨 **Container Parou!**\nO container `%s` (%s) foi finalizado às %s" % (container_name, container_id[:12], date_time)}
+
+        print("Evento Detectado: ",payload)
+        response = requests.post(webhook_url, data=payload)
+
+        if response.status_code >= 400:
+            print(f"Erro ao enviar dados para o Discord: {response.status_code} - {response.text}")
+    
+    except Exception as e:
+        print(f"Erro ao processar evento: {e}")
